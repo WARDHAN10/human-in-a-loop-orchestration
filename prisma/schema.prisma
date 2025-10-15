@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+  // output = "node_modules/@prisma/client"
+  // previewFeatures = ["jsonProtocol"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * ✅ enums live OUTSIDE generator/datasource
+ */
+enum StepKind {
+  HUMAN
+  AUTO
+}
+
+enum StepState {
+  PENDING
+  READY
+  WAITING
+  DONE
+  FAILED
+}
+
+enum WorkflowState {
+  PENDING
+  WAITING_APPROVAL
+  APPROVED
+  REJECTED
+  DONE
+  ROLLED_BACK
+  FAILED
+  RUNNING
+}
+
+/**
+ * ✅ models also OUTSIDE generator/datasource
+ */
+// In schema.prisma - if you want to use Prisma's Json types more safely
+model Workflow {
+  id               String        @id @default(cuid())
+  type             String
+  state            WorkflowState @default(PENDING)
+  metadata         Json? // This remains Json type
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  steps            Steps[]
+  approvals        Approval[]
+  events           Event[]
+  currentStepIndex Int
+
+  @@map("workflows")
+}
+
+model Steps {
+  id           String    @id @default(cuid())
+  workflowId   String
+  idx          Int
+  kind         StepKind
+  state        StepState @default(READY)
+  config       Json?
+  compensating Json?
+
+  // ADD ONLY THESE 3 FIELDS for replay:
+  canReplay   Boolean   @default(true) // Enable/disable replay per Steps
+  replayCount Int       @default(0) // Track how many times replayed
+  failedAt    DateTime? // When Steps failed (for UI)
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workflow      Workflow     @relation(fields: [workflowId], references: [id])
+  Approval      Approval[]
+  StepReplay    StepReplay[]
+  canExecute    Boolean      @default(true)
+  canRollback   Boolean      @default(true)
+  rollbackCount Int          @default(0)
+  executedAt    DateTime?
+  rolledBackAt  DateTime?
+
+  // Rollback relationships
+  rolledBackFromId String? // Reference to step that was rolled back from
+  rolledBackFrom   Steps?         @relation("StepRollback", fields: [rolledBackFromId], references: [id])
+  rolledBackTo     Steps[]        @relation("StepRollback")
+  StepRollback     StepRollback[]
+
+  @@index([workflowId, idx])
+  @@map("steps")
+}
+
+model StepRollback {
+  id         String   @id @default(cuid())
+  stepId     String
+  reason     String?
+  executedBy String
+  snapshot   Json? // State snapshot before rollback
+  createdAt  DateTime @default(now())
+
+  step Steps @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([stepId])
+  @@map("step_rollbacks")
+}
+
+// ADD this simple replay history model:
+model StepReplay {
+  id         String   @id @default(cuid())
+  stepId     String
+  reason     String? // Why was this replayed?
+  replayedBy String // Who initiated the replay?
+  createdAt  DateTime @default(now())
+
+  Steps Steps @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([stepId])
+  @@index([createdAt])
+  @@map("step_replays")
+}
+
+model Approval {
+  id         String   @id @default(cuid())
+  workflowId String
+  stepId     String
+  channel    String
+  status     String   @default("pending")
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
+  Steps      Steps    @relation(fields: [stepId], references: [id])
+
+  @@map("approvals")
+}
+
+model Event {
+  id         String   @id @default(cuid())
+  workflowId String
+  type       String
+  payload    Json?
+  createdAt  DateTime @default(now())
+  workflow   Workflow @relation(fields: [workflowId], references: [id])
+
+  @@map("events")
+}
+
+model WorkflowDefinition {
+  id          String   @id @default(cuid())
+  name        String // e.g., "expense_approval"
+  version     Int      @default(1)
+  description String?
+  steps       Json // JSON array of Steps definitions
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, version])
+  @@map("workflow_definitions")
+}
