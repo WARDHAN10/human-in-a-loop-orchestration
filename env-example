@@ -1,0 +1,19 @@
+DATABASE_URL=""
+
+# for email (Resend free tier)
+SENDGRID_API_KEY=""
+
+# app base URL used in magic links (Vercel/localhost)
+APP_BASE_URL=""
+
+# token signing (HMAC)
+TOKEN_SECRET=""
+TOKEN_TTL_SECONDS=""
+# redis (Upstash)
+
+# slack (optional but recommended)
+SLACK_BOT_TOKEN=""
+SLACK_SIGNING_SECRET=""
+SLACK_APPROVER_USER_ID=""
+SENDGRID_FROM_EMAIL=""
+REDIS_URL=""
