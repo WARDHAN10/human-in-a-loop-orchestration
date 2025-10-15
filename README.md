@@ -73,7 +73,10 @@ Monitor workflow progress, human responses, and event timelines.
 - Dynamic approval forms and input fields  
 
 ---
-
+DEMO -
+- https://www.loom.com/share/6c68d1c77b374580b183c74dce45f8ad?sid=4f195c6d-b34a-4975-8b5c-737dc03d4cb7
+- https://www.loom.com/share/bf2e97ec35a948b1b6edafd2bc72c1b8?sid=066b047a-83cb-49a6-a173-8f4dfaff85f6
+- https://www.loom.com/share/a8598ea894f74136ab0e8ce5ef4348b5?sid=54e34924-903c-4cf4-8f2a-e022de250a07
 ## 🧩 System Architecture
 
 ```text
